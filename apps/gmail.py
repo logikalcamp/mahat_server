@@ -137,132 +137,134 @@ class GmailWorker(Resource):
             print(txt["labelIds"])
             if ('INBOX' in txt["labelIds"] or "CHAT" in txt["labelIds"]) and 'CATEGORY_PROMOTIONS' not in txt['labelIds'] and 'CATEGORY_SOCIAL' not in \
                     txt['labelIds'] and 'CATEGORY_UPDATES' not in txt['labelIds']:
-                payload = txt['payload']
-                headers = payload['headers']
-                # print(msg['id'])
+                if "payload" in txt:
+                    payload = txt['payload']
+                    headers = payload['headers']
+                    # print(msg['id'])
 
-                headersObj = {}
-                print(headers)
-                # create an headers mapper object
-                for header in headers:
-                    headersObj[header['name']] = header['value']
+                    headersObj = {}
+                    print(headers)
+                    # create an headers mapper object
+                    for header in headers:
+                        headersObj[header['name']] = header['value']
 
-                creator = get_to(headersObj["From"], '')
-                if len(creator) > 0:
-                    obj["creator"] = creator[0]
+                    creator = get_to(headersObj["From"], '')
+                    if len(creator) > 0:
+                        obj["creator"] = creator[0]
 
-                assignees = []
-                if "Cc" in headersObj and "To" in headersObj:
-                    assignees = get_to(headersObj["To"], headersObj["Cc"])
-                else:
-                    if "To" in headersObj:
-                        assignees = get_to(headersObj["To"], '')
+                    assignees = []
+                    if "Cc" in headersObj and "To" in headersObj:
+                        assignees = get_to(headersObj["To"], headersObj["Cc"])
                     else:
-                        if "Cc" in headersObj:
-                            assignees = get_to(headersObj["Cc"], '')
-                assignees = assignees + creator
-
-
-                if "data" in payload['body']:
-                    # print("with data")
-                    data = payload['body']['data']
-                    data = data.replace("-", "+").replace("_", "/")
-                    decoded_data = base64.b64decode(data)
-                    soup = BeautifulSoup(decoded_data, "lxml")
-                    body = ''
-                    if soup is not None:
-                        try:
-                            body = soup.body()
-                        except:
-                            body = ''
-                    if isinstance(body, list):
-                        obj['description'] = striphtml(str(body[0]))
-                    else:
-                        obj['description'] = striphtml(body)
-                    # print(striphtml(body))
-                else:
-                    parts = payload['parts']
-                    the_body = ''
-                    description = ''
-                    for part in parts:
-                        # print(part)
-                        if "data" in part["body"]:
-                            data = part['body']['data']
-                            data = data.replace("-", "+").replace("_", "/")
-                            decoded_data = base64.b64decode(data)
-                            soup = BeautifulSoup(decoded_data, "lxml")
-                            body = ' '
-                            if soup is not None:
-                                print("soup",soup)
-                                try:
-                                    body = soup.body()
-                                    body = str(body[0])
-                                except:
-                                    body = ''
-                            the_body = striphtml(body)
-                            description =  body
+                        if "To" in headersObj:
+                            assignees = get_to(headersObj["To"], '')
                         else:
-                            if "parts" in part:
-                                for subPart in part['parts']:
-                                    if "data" in subPart["body"]:
-                                        data = subPart['body']['data']
-                                        data = data.replace("-", "+").replace("_", "/")
-                                        decoded_data = base64.b64decode(data)
-                                        soup = BeautifulSoup(decoded_data, "lxml")
-                                        if soup is not None:
-                                            print("soup", soup)
-                                            try:
-                                                body = soup.body()
-                                                body = str(body[0])
-                                            except:
-                                                body = ''
-                                        body = str(body)
-                                        the_body = the_body + striphtml(body)
-                                        description = description + body
-                    obj['description'] = description
-                    obj["due_date"] = set_due_dates(the_body)
-                    name_opt = {"eng":"","heb":""}
-                    for n in name_mapper:
-                        if n["eng"] == user["given_name"].lower() or n["heb"] == user["given_name"]:
-                            name_opt=n
-                    obj["is_waiting"],obj["reason"] = check_if_cta(the_body,name_opt,assignees,user["email"])
+                            if "Cc" in headersObj:
+                                assignees = get_to(headersObj["Cc"], '')
+                    assignees = assignees + creator
 
-                newThread = True
-                print(headersObj)
-                if 'Subject' in headersObj:
-                    print(msg['id'], headersObj['Subject'])
-                    obj["summary"] = headersObj['Subject'].replace('Re:', '').replace("RE:","").replace("Fwd:","").replace("FW:","")
 
-                obj["project_id"] = msg["threadId"]
-                # if "Message-ID" in headersObj:
-                #     obj["project_id"] = headersObj['Message-ID']
-                # if "Message-Id" in headersObj:
-                #     obj["project_id"] = headersObj["Message-Id"]
+                    if "data" in payload['body']:
+                        # print("with data")
+                        data = payload['body']['data']
+                        data = data.replace("-", "+").replace("_", "/")
+                        decoded_data = base64.b64decode(data)
+                        soup = BeautifulSoup(decoded_data, "lxml")
+                        body = ''
+                        if soup is not None:
+                            try:
+                                body = soup.body()
+                            except:
+                                body = ''
+                        if isinstance(body, list):
+                            obj['description'] = striphtml(str(body[0]))
+                        else:
+                            obj['description'] = striphtml(body)
+                        # print(striphtml(body))
+                    else:
+                        if "parts" in payload:
+                            parts = payload['parts']
+                            the_body = ''
+                            description = ''
+                            for part in parts:
+                                # print(part)
+                                if "data" in part["body"]:
+                                    data = part['body']['data']
+                                    data = data.replace("-", "+").replace("_", "/")
+                                    decoded_data = base64.b64decode(data)
+                                    soup = BeautifulSoup(decoded_data, "lxml")
+                                    body = ' '
+                                    if soup is not None:
+                                        print("soup",soup)
+                                        try:
+                                            body = soup.body()
+                                            body = str(body[0])
+                                        except:
+                                            body = ''
+                                    the_body = striphtml(body)
+                                    description =  body
+                                else:
+                                    if "parts" in part:
+                                        for subPart in part['parts']:
+                                            if "data" in subPart["body"]:
+                                                data = subPart['body']['data']
+                                                data = data.replace("-", "+").replace("_", "/")
+                                                decoded_data = base64.b64decode(data)
+                                                soup = BeautifulSoup(decoded_data, "lxml")
+                                                if soup is not None:
+                                                    print("soup", soup)
+                                                    try:
+                                                        body = soup.body()
+                                                        body = str(body[0])
+                                                    except:
+                                                        body = ''
+                                                body = str(body)
+                                                the_body = the_body + striphtml(body)
+                                                description = description + body
+                            obj['description'] = description
+                            obj["due_date"] = set_due_dates(the_body)
+                            name_opt = {"eng":"","heb":""}
+                            for n in name_mapper:
+                                if n["eng"] == user["given_name"].lower() or n["heb"] == user["given_name"]:
+                                    name_opt=n
+                            obj["is_waiting"],obj["reason"] = check_if_cta(the_body,name_opt,assignees,user["email"])
 
-                # date = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')
-                # obj["created_at"] = date.strftime('%Y/%m:%d %H:%M:%S')
-                # obj["updated"] = date.strftime('%Y/%m:%d %H:%M:%S')
-                if 'Date' in headersObj:
-                    obj["created_at"] = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')+timedelta(hours=2)
-                    obj["updated"] = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')+timedelta(hours=2)
-                obj["url"] = 'https://mail.google.com/mail/u/0/#inbox/' + msg['threadId']
+                    newThread = True
+                    print(headersObj)
+                    if 'Subject' in headersObj:
+                        print(msg['id'], headersObj['Subject'])
+                        obj["summary"] = headersObj['Subject'].replace('Re:', '').replace("RE:","").replace("Fwd:","").replace("FW:","")
 
-                obj["assignee"] = assignees
-                obj["labels"] = txt["labelIds"]
+                    obj["project_id"] = msg["threadId"]
+                    # if "Message-ID" in headersObj:
+                    #     obj["project_id"] = headersObj['Message-ID']
+                    # if "Message-Id" in headersObj:
+                    #     obj["project_id"] = headersObj["Message-Id"]
 
-                # print(datetime.strptime(headersObj['Date'],'%a, %d %b %Y %H:%M:%S %z'))
-                # irrelevant
-                # if headersObj['Message-ID'] not in messageIds:
-                #     messageIds.append(headersObj['Message-ID'])
-                #     newThread = True
-                # else:
-                #     newThread = False
-                # if newThread:
-                #     if 'Thread-Topic' in headersObj:
-                #         threads.append(headersObj['Thread-Topic'])
-                #     else:
-                #         threads.append(headersObj['Subject'])
-                inputs.find_one_and_update({"action_id":msg["id"],"user_email":user["email"]},{"$set":obj},upsert=True)
+                    # date = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')
+                    # obj["created_at"] = date.strftime('%Y/%m:%d %H:%M:%S')
+                    # obj["updated"] = date.strftime('%Y/%m:%d %H:%M:%S')
+                    if 'Date' in headersObj:
+                        obj["created_at"] = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')+timedelta(hours=2)
+                        obj["updated"] = datetime.strptime(headersObj['Date'], '%a, %d %b %Y %H:%M:%S %z')+timedelta(hours=2)
+                    obj["url"] = 'https://mail.google.com/mail/u/0/#inbox/' + msg['threadId']
+
+                    obj["assignee"] = assignees
+                    obj["labels"] = txt["labelIds"]
+
+                    # print(datetime.strptime(headersObj['Date'],'%a, %d %b %Y %H:%M:%S %z'))
+                    # irrelevant
+                    # if headersObj['Message-ID'] not in messageIds:
+                    #     messageIds.append(headersObj['Message-ID'])
+                    #     newThread = True
+                    # else:
+                    #     newThread = False
+                    # if newThread:
+                    #     if 'Thread-Topic' in headersObj:
+                    #         threads.append(headersObj['Thread-Topic'])
+                    #     else:
+                    #         threads.append(headersObj['Subject'])
+                    inputs.find_one_and_update({"action_id":msg["id"],"user_email":user["email"]},{"$set":obj},upsert=True)
         print("done run over emails")
         return True
 
