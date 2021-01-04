@@ -173,7 +173,7 @@ def main():
 
 
 
-
+events.insert_one({"event":"new new new","time":datetime.now()})
 
 def foo():
     print(datetime.now())
