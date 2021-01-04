@@ -225,9 +225,9 @@ def foo():
         # thread.start()
 
 
-while True:
-    foo()
-    time.sleep(120)
+# while True:
+#     foo()
+#     time.sleep(120)
 
 if __name__ == '__main__':
     # every(30, foo)
