@@ -173,7 +173,7 @@ def main():
 
 
 
-events.insert_one({"event":"new new new","time":datetime.now()})
+# events.insert_one({"event":"new new new","time":datetime.now()})
 
 def foo():
     print(datetime.now())
@@ -225,9 +225,10 @@ def foo():
         # thread.start()
 
 
-# while True:
-#     foo()
-#     time.sleep(120)
+while True:
+    print("run ")
+    foo()
+    time.sleep(120)
 
 if __name__ == '__main__':
     # every(30, foo)
